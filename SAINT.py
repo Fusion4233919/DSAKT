@@ -3,7 +3,7 @@ import torch.nn as nn
 import numpy as np
 import copy
 
-device = torch.device("cuda");
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu");
     
 def _getmask(window_size:int):
     return torch.from_numpy(np.triu(np.ones((window_size, window_size)), k=1).astype('bool')).to(device);
@@ -74,7 +74,7 @@ class SAINT(nn.Module):
         
     def forward(self, ex_in, sc_in, po_in, qu_in):
         interation = self.Exerc_embedding(ex_in) + self.Score_embedding(sc_in) + self.Posit_embedding(po_in);
-        question = self.Query_embedding(qu_in);
+        question = self.Query_embedding(qu_in) + self.Posit_embedding(po_in);
         
         for x in range(self.num_layers[0]):
             interation = self.Encoders[x](interation);
