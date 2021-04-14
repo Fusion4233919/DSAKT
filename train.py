@@ -1,14 +1,11 @@
-import os
 import math
 import torch
 import argparse
-import numpy as np
-import torch.nn as nn
 import torch.optim as optim
 from sklearn import metrics
 import readdata
 
-from SAKT import SAKT
+from SAKT import SAKT, NoamOpt
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu");
 parser = argparse.ArgumentParser();
@@ -50,8 +47,8 @@ def train_model(train_path, test_path):
     model = SAKT(device = device, num_skills=E, window_size=window_size, dim=dim, heads=heads, dropout=dropout);
     model.to(device);
 
-    optimizer = optim.Adam(model.parameters(), lr=lr);
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.8, last_epoch=-1);
+    optimizer = optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.999), eps=1e-8);
+    scheduler = NoamOpt(optimizer, warmup=400, dimension=dim);
     best_auc = 0.0;
     
     for epoch in range(epochs):
@@ -62,8 +59,8 @@ def train_model(train_path, test_path):
         loss = model.loss_function(logits, correctness);
         optimizer.zero_grad()
         loss.backward();
-        optimizer.step();
         scheduler.step();
+        optimizer.step();
         
         model.eval();
         with torch.no_grad():

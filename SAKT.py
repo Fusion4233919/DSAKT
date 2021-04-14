@@ -38,3 +38,18 @@ class SAKT(nn.Module):
         ffn = self.Layer_norm[1](ffn + atn);
         
         return self.activation[1](self.Prediction(ffn));
+
+
+class NoamOpt:
+    def __init__(self, optimizer:torch.optim.Optimizer, warmup:int, dimension:int, factor=0.1):
+        self.optimizer = optimizer;
+        self._steps = 0;
+        self._warmup = warmup;
+        self._factor = factor;
+        self._dimension = dimension;
+        
+    def step(self):
+        self._steps += 1;
+        rate = self._factor * (self._dimension**(-0.5) * min(self._steps**(-0.5), self._steps * self._warmup**(-1.5)));
+        for x in self.optimizer.param_groups:
+            x['lr'] = rate;
