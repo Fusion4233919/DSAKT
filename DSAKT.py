@@ -52,8 +52,8 @@ class Decoder(nn.Module):
         return data_out;
 
 class DSAKT(nn.Module):
-    def __init__(self, device, num_skills:int, num_layers:tuple, window_size:int, dim:int, heads:int, dropout:float):
-        super(MODEL, self).__init__();
+    def __init__(self, device, num_skills:int, num_layers:list, window_size:int, dim:int, heads:int, dropout:float):
+        super(DSAKT, self).__init__();
         self.device = device;
         self.num_layers = num_layers;
         self.window_size = window_size;
@@ -93,7 +93,7 @@ from sklearn import metrics
 from utils import getdata, dataloader, NoamOpt
 from tqdm import tqdm
 
-def train_dsakt(num_layers:tuple, window_size:int, dim:int, heads:int, dropout:float, lr:float, train_path:str, valid_path:str, save_path:str):
+def train_dsakt(num_layers:list, window_size:int, dim:int, heads:int, dropout:float, lr:float, train_path:str, valid_path:str, save_path:str):
     
     print("using {}".format(device));
     
@@ -104,11 +104,11 @@ def train_dsakt(num_layers:tuple, window_size:int, dim:int, heads:int, dropout:f
     valid_data,N_val,E,unit_list_val = getdata(window_size=window_size, path=valid_path, model_type='sakt');
     train_loader = dataloader(train_data, batch_size=batch_size, shuffle=True);
     
-    model = DSAKT(device=device, num_skills=E, num_layers=(2,2), window_size=window_size, dim=dim, heads=heads, dropout=dropout);
+    model = DSAKT(device=device, num_skills=E, num_layers=num_layers, window_size=window_size, dim=dim, heads=heads, dropout=dropout);
     model.to(device);
     
     optimizer = optim.Adam(model.parameters(), betas=(0.9, 0.999), eps=1e-8);
-    scheduler = NoamOpt(optimizer, warmup=400, dimension=dim, factor=lr);
+    scheduler = NoamOpt(optimizer, warmup=120, dimension=dim, factor=lr);
     best_auc = 0.0;
     train_steps=len(train_loader);
     
@@ -130,7 +130,7 @@ def train_dsakt(num_layers:tuple, window_size:int, dim:int, heads:int, dropout:f
             train_bar.desc = "train epoch[{}/{}] loss:{:.3f}".format(epoch + 1, epochs, loss);
         print('[epoch %d] train_loss: %.3f' %(epoch + 1, running_loss / train_steps));  
     
-        if (epoch + 1) % 50 == 0:
+        if (epoch + 1) % 5 == 0:
             model.eval();
             with torch.no_grad():
                 predict = model(valid_data[0].to(device), valid_data[1].to(device)).squeeze(-1).to("cpu");
@@ -155,7 +155,7 @@ def train_dsakt(num_layers:tuple, window_size:int, dim:int, heads:int, dropout:f
                 
 if __name__ =="__main__":
     parser = argparse.ArgumentParser();
-    parser.add_argument("-l", "--layers", type=tuple);
+    parser.add_argument("-l", "--layers", type=int, nargs=2);
     parser.add_argument("-ws", "--window_size", type=int);
     parser.add_argument("-d", "--dim", type=int);
     parser.add_argument("--heads", type=int);
@@ -167,7 +167,7 @@ if __name__ =="__main__":
     args = parser.parse_args();
 
     lr = 0.9;
-    num_layers = (2,2);
+    num_layers = [2,2];
     window_size = 40;
     dim = 16;
     dropout = 0.2;
@@ -195,4 +195,3 @@ if __name__ =="__main__":
                 train_path=args.train_data, 
                 valid_path=args.val_data, 
                 save_path=args.save_path);
-            
