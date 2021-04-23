@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Lastmodefied on Fri Apr 23 16:12:38 2021
+Lastmodefied on Fri Apr 23 17:20:38 2021
 
 @author: Fusion
 """
@@ -26,7 +26,10 @@ class SAKT(nn.Module):
         self.Position_embedding = nn.Embedding(num_embeddings=window_size+1, embedding_dim=dim, padding_idx=0);
         self.Projection = nn.ModuleList([nn.Linear(in_features=dim, out_features=dim, bias=False) for x in range(3)]);
         self.Attention = nn.MultiheadAttention(embed_dim=dim, num_heads=heads, dropout=dropout);
-        self.Feed_forward = nn.ModuleList([nn.Linear(in_features=dim, out_features=dim, bias=True) for x in range(2)]);
+        self.Feed_forward = nn.Sequential(nn.Linear(in_features=dim, out_features=dim, bias=True),
+                                          nn.ReLU(),
+                                          nn.Linear(in_features=dim, out_features=dim, bias=True),
+                                          nn.Dropout(dropout));
         self.Layer_norm = nn.LayerNorm(normalized_shape=dim);
         self.Dropout = nn.Dropout(dropout);
         self.Prediction = nn.Linear(in_features=dim, out_features=1, bias=True);
@@ -34,20 +37,18 @@ class SAKT(nn.Module):
     def forward(self, input_in, input_ex):
         position = self.Position_embedding( torch.arange(self.window_size).unsqueeze(0).to(device) + 1 );
         interaction = self.Interation_embedding(input_in);
-        interaction = interaction + (interaction != 0) * position;
+        key_value = interaction + (interaction != 0) * position;
         question = self.Question_embedding(input_ex);
         
-        value = self.Layer_norm(self.Projection[0](interaction)).permute(1,0,2);
-        key = self.Layer_norm(self.Projection[1](interaction)).permute(1,0,2);
+        value = self.Layer_norm(self.Projection[0](key_value)).permute(1,0,2);
+        key = self.Layer_norm(self.Projection[1](key_value)).permute(1,0,2);
         query = self.Layer_norm(self.Projection[2](question)).permute(1,0,2);
         
         atn, _ = self.Attention(query, key, value, attn_mask=_getmask(self.window_size));
+        res = (self.Layer_norm(atn)+query).permute(1,0,2);
+        ffn = self.Feed_forward(res);
         
-        atn = (self.Layer_norm(atn)+query).permute(1,0,2);
-        
-        ffn = self.Dropout(self.Feed_forward[1]( self.activation[0](self.Feed_forward[0](atn)) ));
-        
-        return self.activation[1](self.Prediction(ffn+atn));
+        return self.activation[1](self.Prediction(ffn+res));
 
 import math
 import torch
