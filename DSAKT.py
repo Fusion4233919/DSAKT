@@ -149,7 +149,7 @@ def train_dsakt(num_layers:list, window_size:int, dim:int, heads:int, dropout:fl
                 auc = metrics.auc(fpr, tpr);
                 if auc > best_auc:
                     best_auc = auc;
-                    torch.save(model.state_dict(), save_path); 
+                    torch.save(model, save_path);
                 print('val_auc: %.3f mse: %.3f acc: %.3f' %(auc, rmse, acc / len(pred)));
  
                 
