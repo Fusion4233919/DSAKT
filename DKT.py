@@ -1,3 +1,9 @@
+# -*- coding: utf-8 -*-
+"""
+Last modified on Sat Apr 24 16:57:38 2021
+
+@author: Fusion
+"""
 import torch
 import torch.nn as nn
 
@@ -49,7 +55,7 @@ def train_dkt(window_size:int, dim:int, lr:float, train_path:str, valid_path:str
     
     optimizer = optim.Adam(model.parameters(), betas=(0.9, 0.999), eps=1e-8);
     best_auc = 0.0;
-    
+
     for epoch in range (epochs):
         model.train();
         running_loss = 0.0;
@@ -66,12 +72,12 @@ def train_dkt(window_size:int, dim:int, lr:float, train_path:str, valid_path:str
             loss = model.loss_function(logits, correct);
             optimizer.zero_grad();
             loss.backward();
-            
             nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm);
             optimizer.step();
             running_loss += loss.item();
-        
-        print('[epoch %d] train_loss: %.3f' %(epoch + 1, running_loss / train_steps)); 
+            
+            train_bar.desc = "train epoch[{}/{}] loss:{:.3f}".format(epoch + 1, epochs, loss);
+        print('[epoch %d] train_loss: %.3f' %(epoch + 1, running_loss / train_steps));  
         
         if (epoch + 1) % 1 == 0:
             model.eval();
@@ -100,7 +106,7 @@ def train_dkt(window_size:int, dim:int, lr:float, train_path:str, valid_path:str
                     best_auc = auc;
                     torch.save(model, save_path); 
                 print('val_auc: %.3f mse: %.3f acc: %.3f' %(auc, rmse, acc / len(pred)));
-                
+
     print(best_auc);
     
 if __name__ =="__main__":
