@@ -3,44 +3,49 @@ import math
 import torch
 import argparse
 from sklearn import metrics
-from utils import getdata
-from DSAKT import DSAKT, Encoder, Decoder
-from SAKT import SAKT
+from utils import getdata, dataloader
+from DKT import DKT
 
 def predict(window_size:int, model_path:str, data_path:str):
+    
+    batch_size = 128;
+    dim = 200;
+    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu");
     pre_data,N_val,E,unit_list_val = getdata(window_size=window_size,path=data_path,model_type='sakt')
-
+    pre_loader = dataloader(pre_data, batch_size=batch_size, shuffle=False);
+    
     model = torch.load(model_path);
-    assert model.window_size == window_size;
     model.to(device);
     model.eval();
 
     with torch.no_grad():
-        predict = model(pre_data[0].to(device), pre_data[1].to(device)).squeeze(-1).to("cpu");
-        correctness = pre_data[2];
+        
+        h = torch.zeros((1, batch_size, dim)).to(device);
+        c = torch.zeros((1, batch_size, dim)).to(device);
         
         pred = [];
-        cort = [];
-        for i in range(N_val):
-            pred.extend(predict[i][0:unit_list_val[i]].cpu().numpy().tolist());
-            cort.extend(correctness[i][0:unit_list_val[i]].numpy().tolist());
-                
-        pred = torch.Tensor(pred) > 0.5;
-        cort = torch.Tensor(cort) == 1;
-        acc = torch.eq(pred, cort).sum() / len(pred);
-        
-        pred = [];
-        cort = [];
-        for i in range(N_val):
-            pred.extend(predict[i][unit_list_val[i]-1:unit_list_val[i]].cpu().numpy().tolist());
-            cort.extend(correctness[i][unit_list_val[i]-1:unit_list_val[i]].numpy().tolist());
-                
+        cort = [];  
+
+        for batch in range(len(pre_loader)):
+            data = pre_loader[batch];
+            predict, (h,c) = model(data[0].to(device), (h,c));
+            predict = torch.gather(predict.to('cpu'), 2, data[1].unsqueeze(2)).squeeze(-1);
+            correct = data[2];
+
+            for i in range(batch_size):
+                pos = i + batch_size * batch;
+                pred.extend(predict[i][0:unit_list_val[pos]].numpy().tolist());
+                cort.extend(correct[i][0:unit_list_val[pos]].numpy().tolist());
+
         rmse = math.sqrt(metrics.mean_squared_error(cort, pred));
         fpr, tpr, thresholds = metrics.roc_curve(cort, pred, pos_label=1);
+        pred = torch.Tensor(pred) > 0.5;
+        cort = torch.Tensor(cort) == 1;
+        acc = torch.eq(pred, cort).sum();
         auc = metrics.auc(fpr, tpr);
+        print('val_auc: %.3f mse: %.3f acc: %.3f' %(auc, rmse, acc / len(pred)))
         
-        print('val_auc: %.3f mse: %.3f acc: %.3f' %(auc, rmse, acc));
         
 if __name__ == "__main__":
     parser = argparse.ArgumentParser();
