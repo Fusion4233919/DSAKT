@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Lastmodefied on Fri Apr 23 17:20:38 2021
+Last modified on Fri Apr 23 17:20:38 2021
 
 @author: Fusion
 """
