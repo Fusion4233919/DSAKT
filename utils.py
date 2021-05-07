@@ -28,12 +28,9 @@ def getdata(window_size,path,model_type,drop=False):
                 if int(item) >E:
                     E=int(item)
 
-            if model_type=='sakt':
-                tlst_1=tlst[0:len(tlst)-1]
-                tlst_2=tlst[1:len(tlst)]
-            elif model_type=='saint':
-                tlst_1=tlst
-                tlst_2=tlst
+            tlst_1=tlst[0:len(tlst)-1]
+            tlst_2=tlst[1:len(tlst)]
+            
 
             if drop:
                 if len(tlst_1)>window_size:
@@ -58,17 +55,14 @@ def getdata(window_size,path,model_type,drop=False):
         else:   #1:False 2:True
             tlst=line.split('\n')[0].split(',')
 
-            if model_type=='sakt':
-                tlst_1=tlst[0:len(tlst)-1]
-                tlst_2=tlst[1:len(tlst)]
-            elif model_type=='saint':
-                tlst_1=tlst
-                tlst_2=tlst
+            tlst_1=tlst[0:len(tlst)-1]
+            tlst_2=tlst[1:len(tlst)]
 
             if drop:
                 if len(tlst_1)>window_size:
                     tlst_1=tlst_1[0:window_size]
                     tlst_2=tlst_2[0:window_size]
+
 
             while len(tlst_1)>window_size:
                 input_2.append([int(i)+bis for i in tlst_1[0:window_size]])
@@ -91,10 +85,7 @@ def getdata(window_size,path,model_type,drop=False):
     input_4=torch.tensor(input_4)
 
     if model_type=='sakt':
-        len_1=len(input_1)
-        for i in range(len_1):
-            for j in range(window_size):
-                input_1[i][j] +=input_2[i][j]*E
+        input_1=input_1+E*input_2;
         return torch.stack((input_1,input_3,input_4),0),N,E,units
     elif model_type=='saint':
         return torch.stack((input_1,input_2),0),N,E,units
